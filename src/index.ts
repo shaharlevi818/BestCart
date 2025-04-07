@@ -1,29 +1,47 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import departmentsRouter from './routes/departments'; // Import the departments router
-import itemsRouter from './routes/items'; // Import the items router
-import listsRouter from './routes/lists'; // Import the lists router
-import storesRouter from './routes/stores'; // Import the stores router
-const app = express();
-const port = 3000;
+// src/index.ts 
+import dotenv from 'dotenv';
+dotenv.config();
 
+import express, { Express, Request, Response } from 'express';
+import cors from 'cors';
+
+// --- Route Imports (Simplified) ---
+import departmentsRouter from './routes/departments';
+import itemsRouter from './routes/items';
+import listsRouter from './routes/lists';
+import storesRouter from './routes/stores';
+import listsManagerRouter from './routes/listsManager';
+import usersRouter from './routes/users'; 
+
+// --- App Initialization ---
+const app: Express = express();
+const PORT = process.env.PORT || 3000;
+
+// --- Middleware ---
 app.use(cors());
 app.use(express.json());
 
+// --- Basic Routes / Health Check ---
 app.get('/', (req: Request, res: Response) => {
-  res.send('Hello, Grocery Scraper API!');
+  res.send('Hello, BestCart API Server!');
 });
 
-app.use('/departments', departmentsRouter); // Mount the departments router
-app.use('/items', itemsRouter); // Mount the items router
-app.use('/lists', listsRouter); // Mount the lists router
-app.use('/stores', storesRouter); // Mount the stores router
+// --- API Routes - Mount routers ---
+app.use('/api/departments', departmentsRouter);
+app.use('/api/items', itemsRouter);
+app.use('/api/lists', listsRouter);
+app.use('/api/stores', storesRouter);
+app.use('/api/listsManager', listsManagerRouter);
+app.use('/api/users', usersRouter); 
+
+// Specific endpoint
 app.post('/scrape', (req: Request, res: Response) => {
   const groceryList = req.body;
-  console.log('Received grocery list:', groceryList);
-  res.json({ message: 'Scraping started...', receivedList: groceryList });
+  console.log('Received grocery list for scraping:', groceryList);
+  res.json({ message: 'Scraping initiated (placeholder)', receivedList: groceryList });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+// --- Start Server ---
+app.listen(PORT, () => {
+  console.log(`[server]: Server is running on http://localhost:${PORT}`);
 });
