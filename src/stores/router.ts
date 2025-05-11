@@ -1,6 +1,6 @@
-// src/routes/stores.ts
+// src/stores/router.ts
 import express, { Request, Response, Router } from 'express';
-import pool from '../database'; // Import the database pool
+import pool from '../config/database'; // Import the database pool
 
 const router: Router = express.Router();
 

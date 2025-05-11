@@ -1,47 +1,52 @@
-// src/index.ts 
+// src/index.ts
+
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config(); // Load .env variables FIRST
 
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 
-// --- Route Imports (Simplified) ---
-import departmentsRouter from './routes/departments';
-import itemsRouter from './routes/items';
-import listsRouter from './routes/lists';
-import storesRouter from './routes/stores';
-import listsManagerRouter from './routes/listsManager';
-import usersRouter from './routes/users'; 
+// --- Route Imports ---
+// No longer importing from './routes/...' for features
+import productRouter from './products/router';        // Correct path based on structure
+import shoppingListRouter from './shoppingLists/router'; // Correct path based on structure
+import storeRouter from './stores/router';           // Correct path based on structure
+import userRouter from './users/router';             // Correct path based on structure
+// Removed departmentsRouter and listsManagerRouter imports
 
 // --- App Initialization ---
 const app: Express = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Use PORT from .env or default
 
 // --- Middleware ---
-app.use(cors());
-app.use(express.json());
+app.use(cors());          // Enable CORS
+app.use(express.json());  // Enable JSON body parsing
 
 // --- Basic Routes / Health Check ---
 app.get('/', (req: Request, res: Response) => {
-  res.send('Hello, BestCart API Server!');
+  res.send('Hello, BestCart API Server is Running on port 3000!'); // Updated message slightly
 });
 
 // --- API Routes - Mount routers ---
-app.use('/api/departments', departmentsRouter);
-app.use('/api/items', itemsRouter);
-app.use('/api/lists', listsRouter);
-app.use('/api/stores', storesRouter);
-app.use('/api/listsManager', listsManagerRouter);
-app.use('/api/users', usersRouter); 
+// Mount routers from feature folders onto base API paths
+app.use('/api/products', productRouter);      // Corresponds to src/products/router.ts
+app.use('/api/shoppingLists', shoppingListRouter);   // Corresponds to src/shoppingLists/router.ts
+app.use('/api/stores', storeRouter);         // Corresponds to src/stores/router.ts
+app.use('/api/users', userRouter);           // Corresponds to src/users/router.ts
+// Removed app.use for departmentsRouter and listsManagerRouter
 
-// Specific endpoint
-app.post('/scrape', (req: Request, res: Response) => {
+// --- Standalone Routes (Consider moving '/scrape' to its own router/service later) ---
+app.post('/api/scrape', (req: Request, res: Response) => { // Added /api prefix for consistency
+  // ** Add Input Validation here! **
   const groceryList = req.body;
   console.log('Received grocery list for scraping:', groceryList);
-  res.json({ message: 'Scraping initiated (placeholder)', receivedList: groceryList });
+  // TODO: Call a ScrapingService here
+  res.status(501).json({ message: 'Scraping not implemented yet', receivedList: groceryList }); // Use 501 Not Implemented
 });
 
 // --- Start Server ---
 app.listen(PORT, () => {
   console.log(`[server]: Server is running on http://localhost:${PORT}`);
+  // Optional: The database connection log should appear automatically when
+  // database.ts is first imported by one of the services.
 });

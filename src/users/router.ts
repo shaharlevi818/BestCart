@@ -1,4 +1,4 @@
-// src/routes/users.ts
+// src/users/router.ts
 import express, { Request, Response, Router } from 'express';
 // import pool from '../database'; // Import pool when ready to implement
 
