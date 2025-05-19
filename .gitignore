@@ -1,4 +1,17 @@
-node_modules/
-dist/
+# macOS
 .DS_Store
+
+# Node dependencies (if you have node_modules in root or want to be explicit)
+node_modules/
+
+# Sub-project dependencies (ensure these are also in sub-project .gitignores if they exist)
+server/node_modules/
+server/dist/ # If 'dist' is a build output
+mobile-app/node_modules/
+# mobile-app/ios/Pods/ # Example for React Native
+# mobile-app/android/build/ # Example for React Native
+
+# Environment files
 .env
+server/.env
+mobile-app/.env
