@@ -2,7 +2,7 @@
 
 import express, { Request, Response, Router } from 'express';
 import pool from '../config/database'; // Import the database pool
-
+import ProductService from './service'; // Import the Product interface
 const router: Router = express.Router();
 
 // GET /api/items - Fetch all canonical products
@@ -15,6 +15,34 @@ router.get('/', async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Error fetching products:', error.message);
         res.status(500).json({ message: 'Error fetching products' });
+    }
+});
+
+// GET /api/products/search?q=...&userId=...
+router.get('/search', async (req: Request, res: Response) => {
+    // 1. Validate query parameters
+    const { q, userId } = req.query;
+
+    if (!q || typeof q !== 'string' || q.trim() === '') {
+        return res.status(400).json({ message: 'A search query "q" is required.' });
+    }
+
+    if (!userId || isNaN(Number(userId))) {
+        return res.status(400).json({ message: 'A valid "userId" is required.' });
+    }
+    
+    console.log(`Received request for GET /api/products/search with query: "${q}"`);
+    
+    try {
+        // 2. Call the new service method
+        const searchResults = await ProductService.searchProducts(q, Number(userId));
+        
+        // 3. Send back the results
+        res.status(200).json(searchResults);
+
+    } catch (error: any) {
+        console.error('Error in product search route:', error.message);
+        res.status(500).json({ message: 'Error searching for products' });
     }
 });
 
@@ -62,6 +90,5 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-// Add PUT (update) and DELETE routes similarly...
 
 export default router;

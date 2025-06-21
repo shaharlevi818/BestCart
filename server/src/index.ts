@@ -30,7 +30,7 @@ app.get('/', (req: Request, res: Response) => {
 // --- API Routes - Mount routers ---
 // Mount routers from feature folders onto base API paths
 app.use('/api/products', productRouter);      // Corresponds to src/products/router.ts
-app.use('/api/shoppingLists', shoppingListRouter);   // Corresponds to src/shoppingLists/router.ts
+app.use('/api/shopping-lists', shoppingListRouter);   // Corresponds to src/shoppingLists/router.ts
 app.use('/api/stores', storeRouter);         // Corresponds to src/stores/router.ts
 app.use('/api/users', userRouter);           // Corresponds to src/users/router.ts
 // Removed app.use for departmentsRouter and listsManagerRouter
@@ -49,4 +49,10 @@ app.listen(PORT, () => {
   console.log(`[server]: Server is running on http://localhost:${PORT}`);
   // Optional: The database connection log should appear automatically when
   // database.ts is first imported by one of the services.
+});
+
+// ADD THIS TEST ROUTE:
+app.get('/api/test', (req, res) => {
+  console.log('SUCCESS: /api/test route was hit!');
+  res.status(200).send('API Test Route is Working!');
 });

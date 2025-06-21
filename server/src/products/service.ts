@@ -14,7 +14,8 @@ import {
 import {
     Product,
     ShoppingListProductView,
-    RawShoppingListProductData
+    RawShoppingListProductData,
+    ProductSearchResult
 } from '../products/interface';
 
 
@@ -56,104 +57,177 @@ class ProductService {
      * @returns Array of ShoppingListItemView objects.
      */
     async getProductsDetailsForList( listId: number, options: GetProductsForListOptions = {}): Promise<ShoppingListProductView[]> {
-        const { includePrice, storeId } = options;
+    const { includePrice, storeId } = options;
 
-        // --- SQL Query Construction ---
-        let selectClause = `
-            p.id AS p_id,
-            p.name AS p_name,
-            p.description AS p_description,
-            p.manufacturer AS p_manufacturer,
-            p.canonical_department AS p_canonical_department,
-            p.default_units AS p_default_units,
-            p.created_at AS p_created_at,
-            p.updated_at AS p_updated_at,
-            li.shopping_list_id AS li_shopping_list_id,
-            li.department_grouping AS li_department_grouping,
-            li.quantity AS li_quantity,
-            li.units AS li_units,
-            li.is_checked AS li_is_checked,
-            li.notes AS li_notes,
-            li.added_at AS li_added_at
-        `;
+    // --- SQL Query Construction ---
+    let selectClause = `
+        p.id AS p_id,
+        p.name AS p_name,
+        p.description AS p_description,
+        p.manufacturer AS p_manufacturer,
+        p.canonical_department AS p_canonical_department,
+        p.default_units AS p_default_units,
+        p.created_at AS p_created_at,
+        p.updated_at AS p_updated_at,
+        li.shopping_list_id AS li_shopping_list_id,
+        li.department_grouping AS li_department_grouping,
+        li.quantity AS li_quantity,
+        li.units AS li_units,
+        li.is_checked AS li_is_checked,
+        li.notes AS li_notes,
+        li.added_at AS li_added_at,
+        li.id AS li_id -- <<< FIX 1: Added this line to select the list item's unique ID
+    `;
 
-        let joinClause = `
-            FROM list_items li
-            INNER JOIN products p ON li.product_id = p.id
-        `; // Ensure 'products.id' and 'list_items.product_id' are the correct join keys
+    let joinClause = `
+        FROM list_items li
+        INNER JOIN products p ON li.product_id = p.id
+    `; 
 
-        const queryParams: (number | string)[] = []; // For parameterized query
+    const queryParams: (number | string)[] = [];
 
-        if (includePrice) {
-            // This section is for future price fetching.
-            // You'll need a 'product_prices' table (or similar).
-            selectClause += `, pr.price AS price`; // Assuming 'price' column in product_prices
-            joinClause += ` LEFT JOIN product_prices pr ON p.id = pr.product_id`; // Adjust join condition
-            if (storeId) {
-                joinClause += ` AND pr.store_id = ?`; // If prices are store-specific
-                queryParams.push(storeId);
-            } else {
-                // Handle if prices are needed but no storeId (e.g., default store, average price)
-                // joinClause += ` AND pr.is_default_store = 1`; // Example
-            }
+    if (includePrice) {
+        // Your future pricing logic here...
+    }
+    
+    queryParams.push(listId); 
+
+    const sql = `
+        SELECT ${selectClause}
+        ${joinClause}
+        WHERE li.shopping_list_id = ? 
+        ORDER BY p.canonical_department ASC, p.name ASC; 
+    `;
+
+    try {
+        const [rows] = await pool.query<RawShoppingListProductData[] & RowDataPacket[]>(sql, queryParams);
+
+        if (!rows) {
+            return [];
         }
-        queryParams.push(listId); // listId for the WHERE clause (li.shopping_list_id = ?)
 
-        const sql = `
-            SELECT ${selectClause}
-            ${joinClause}
-            WHERE li.shopping_list_id = ? 
-            ORDER BY li.added_at ASC; 
-        `;
-        // Note on queryParams order: if storeId is used, it's added first, then listId.
-        // The '?' in `WHERE li.shopping_list_id = ?` corresponds to the *last* element pushed to queryParams
-        // if it's the only dynamic part of the WHERE. If storeId is also in a WHERE/AND, adjust.
-        // Corrected: The '?' for shopping_list_id will map to the listId parameter that was pushed last.
+        return rows.map(row => {
+            const department_display = row.li_department_grouping || row.p_canonical_department || 'Other';
+            const units_display = row.li_units || row.p_default_units || 'Unit';
 
+            const mappedItem: ShoppingListProductView = {
+                id: row.li_id, // <<< FIX 2: Added the list item ID to the final object
+                product_id: row.p_id,
+                list_id: row.li_shopping_list_id,
+                name: row.p_name || 'Unknown Product',
+                manufacturer: row.p_manufacturer || null,
+                department_display: department_display,
+                description: row.p_description || null,
+                notes: row.li_notes || null,
+                quantity: row.li_quantity !== null && row.li_quantity !== undefined ? Number(row.li_quantity) : 1,
+                units_display: units_display,
+                is_checked: parseBoolean(row.li_is_checked),
+                added_at: parseDate(row.li_added_at),
+                product_created_at: parseDate(row.p_created_at),
+                product_updated_at: parseDate(row.p_updated_at),
+            };
+            return mappedItem;
+        });
+    } catch (error) {
+        console.error(`ProductService: Error fetching product details for list ${listId}:`, error);
+        throw new Error('Database error while fetching product details for the list.');
+    }
+}
+    /**
+     * Fetches a single canonical product by its ID.
+     * @param productId The ID of the product to fetch.
+     * @returns A promise that resolves to a Product object or null if not found.
+     */
+    async getProductById(productId: number): Promise<Product | null> {
+        console.log(`SERVICE: Getting product with ID ${productId}`);
+        const sql = 'SELECT * FROM products WHERE id = ?;';
         try {
-            const [rows] = await pool.query<RawShoppingListProductData[] & RowDataPacket[]>(sql, queryParams);
-
-            if (!rows) { // Should not happen with pool.query returning [rows, fields] but good for safety
-                return [];
+            const [rows] = await pool.query<RowDataPacket[]>(sql, [productId]);
+            if (rows.length === 0) {
+                console.log(`SERVICE: Product with ID ${productId} not found.`);
+                return null;
             }
-
-            return rows.map(row => {
-                // Logic to decide which department and units to use for display
-                const department_display = row.li_department_grouping || row.p_canonical_department || null;
-                const units_display = row.li_units || row.p_default_units || null;
-
-                // Safely access properties, providing defaults or nulls
-                const mappedItem: ShoppingListProductView = {
-                    product_id: row.p_id,
-                    list_id: row.li_shopping_list_id,
-                    name: row.p_name || 'Unknown Product', // Fallback for name
-                    manufacturer: row.p_manufacturer || null,
-                    department_display: department_display,
-                    description: row.p_description || null,
-                    notes: row.li_notes || null,
-                    quantity: row.li_quantity !== null && row.li_quantity !== undefined ? Number(row.li_quantity) : 1, // Default quantity
-                    units_display: units_display,
-                    is_checked: parseBoolean(row.li_is_checked),
-                    added_at: parseDate(row.li_added_at),
-                    product_created_at: parseDate(row.p_created_at),
-                    product_updated_at: parseDate(row.p_updated_at),
-                    // price: includePrice && row.price !== undefined ? Number(row.price) : undefined, // Example price mapping
-                };
-                return mappedItem;
-            });
+            return rows[0] as Product;
         } catch (error) {
-            console.error(`ProductService: Error fetching product details for list ${listId}:`, error);
-            // Consider throwing a more specific custom error or re-throwing
-            throw new Error('Database error while fetching product details for the list.');
+            console.error(`SERVICE: Error fetching product ${productId}:`, error);
+            throw new Error('Database error while fetching product.');
         }
     }
 
-    // You can add other product-related methods here, e.g.:
-    // async getProductById(productId: number): Promise<Product | null> { ... }
-    // async createProduct(productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> { ... }
-    // async updateProduct(productId: number, productData: Partial<Product>): Promise<Product | null> { ... }
-    // async deleteProduct(productId: number): Promise<boolean> { ... }
+    /**
+     * Searches for products and aggregates pricing and availability info.
+     * @param searchQuery The user's search term.
+     * @param userId The ID of the current user.
+     * @returns A promise that resolves to an array of search results.
+     */
+    async searchProducts(searchQuery: string, userId: number): Promise<ProductSearchResult[]> {
+        console.log(`SERVICE: Searching for products with query "${searchQuery}" for user ${userId}`);
 
+        // 1. Get the user's preferred store ID first
+        const userSql = 'SELECT preferred_store_id FROM users WHERE id = ?;';
+        const [userRows] = await pool.query<RowDataPacket[]>(userSql, [userId]);
+        const preferredStoreId = userRows.length > 0 ? userRows[0].preferred_store_id : null;
+        
+        // 2. Search for matching products in the main products table
+        const productSql = 'SELECT id, name, manufacturer FROM products WHERE name LIKE ? LIMIT 20;'; // Limit results
+        const [products] = await pool.query<Product[] & RowDataPacket[]>(productSql, [`%${searchQuery}%`]);
+
+        if (products.length === 0) {
+            return []; // No products found, return empty array
+        }
+
+        // 3. For each found product, get all its pricing info
+        const results = await Promise.all(products.map(async (product) => {
+            
+            const pricesSql = 'SELECT store_id, current_price FROM store_products WHERE product_id = ?;';
+            const [priceRows] = await pool.query<RowDataPacket[]>(pricesSql, [product.id]);
+
+            let displayPrice: string | null = null;
+            let priceSource: 'favorite_store' | 'average' | 'none' = 'none';
+            let isAtFavoriteStore = false;
+            let otherStoreCount = 0;
+
+            if (priceRows.length > 0) {
+                // Check for favorite store price
+                const favoriteStorePriceRow = preferredStoreId 
+                    ? priceRows.find(p => p.store_id === preferredStoreId) 
+                    : null;
+
+                if (favoriteStorePriceRow && favoriteStorePriceRow.current_price) {
+                    displayPrice = parseFloat(favoriteStorePriceRow.current_price).toFixed(2);
+                    priceSource = 'favorite_store';
+                    isAtFavoriteStore = true;
+                    otherStoreCount = priceRows.filter(p => p.store_id !== preferredStoreId).length;
+                } else {
+                    // If no favorite price, calculate average
+                    const validPrices = priceRows.map(p => parseFloat(p.current_price)).filter(p => !isNaN(p));
+                    if (validPrices.length > 0) {
+                        const sum = validPrices.reduce((a, b) => a + b, 0);
+                        displayPrice = (sum / validPrices.length).toFixed(2);
+                        priceSource = 'average';
+                    }
+                    otherStoreCount = priceRows.length;
+                }
+            }
+            
+            // Construct the final search result object
+            const searchResult: ProductSearchResult = {
+                id: product.id,
+                name: product.name,
+                manufacturer: product.manufacturer || null,
+                displayPrice,
+                priceSource,
+                availability: {
+                    isAtFavoriteStore,
+                    otherStoreCount
+                }
+            };
+            
+            return searchResult;
+        }));
+
+        return results;
+    }
 }
 
 export default new ProductService();

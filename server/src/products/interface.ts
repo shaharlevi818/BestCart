@@ -14,6 +14,7 @@ export interface Product {
 
 // For items as they appear in a shopping list
 export interface ShoppingListProductView {
+    id: number;                            // From list_items.id
     product_id: number;                     // From products.id
     list_id: number;                        // From list_items.shopping_list_id
     name: string;                           // From products.name
@@ -34,6 +35,7 @@ export interface ShoppingListProductView {
 // This interface helps in typing the raw output from the SQL query before mapping
 export interface RawShoppingListProductData {
     // Fields from 'products' table (aliased with p_ prefix)
+    li_id: number; // From list_items.id
     p_id: number;
     p_name: string;
     p_description?: string | null;
@@ -54,4 +56,16 @@ export interface RawShoppingListProductData {
 
     // Future fields like price
     // price?: number;
+}
+
+export interface ProductSearchResult {
+    id: number;
+    name: string;
+    manufacturer: string | null;
+    displayPrice: string | null; // A formatted string for the price
+    priceSource: 'favorite_store' | 'average' | 'none';
+    availability: {
+      isAtFavoriteStore: boolean;
+      otherStoreCount: number;
+    };
 }

@@ -1,20 +1,17 @@
 // src/types/index.ts
-// This file defines TypeScript interfaces for the data structures used in the BestCartApp.
 
-
-export interface Store {
+// Represents a row from the 'shopping_lists' table.
+export interface ShoppingList {
   id: number;
+  user_id: number | null;
   name: string;
-  base_url: string | null;
+  description: string | null;
+  is_template: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface User {
-  id: number;
-  email: string;
-  name: string | null;
-  preferred_store_id: number | null;
-}
-
+// Represents a row from the canonical 'products' table.
 export interface Product {
   id: number;
   name: string;
@@ -24,17 +21,7 @@ export interface Product {
   default_units: string | null;
 }
 
-export interface ShoppingList {
-  // ... (existing definition)
-  id: number;
-  user_id: number;
-  name: string;
-  description: string | null;
-  is_template: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
+// Represents a row from the 'list_items' table, linking products to lists.
 export interface ListItem {
   id: number;
   shopping_list_id: number;
@@ -46,8 +33,48 @@ export interface ListItem {
   notes: string | null;
 }
 
-// A helper type for displaying list items with all their joined data
-export interface DisplayListItem extends ListItem {
+// --- ADD THIS INTERFACE ---
+// Represents the detailed data for an item on a list, as returned by the server.
+export interface ShoppingListProductView {
+    id: number; // The unique ID from the list_items table
+    product_id: number;
+    list_id: number;
+    name: string;
+    manufacturer: string | null;
+    department_display: string | null;
+    description: string | null;
+    notes: string | null;
+    quantity: number;
+    units_display: string | null;
+    is_checked: boolean;
+    added_at: string;
+    product_created_at: string;
+    product_updated_at: string;
+}
+
+// A helper type used to display a list item within the app.
+export interface DisplayListItem {
+    id: number;
+    shopping_list_id: number;
+    product_id: number;
     productName: string;
-    department: string; // The department to group by
+    department: string;
+    manufacturer: string | null;
+    quantity: number;
+    units: string | null;
+    is_checked: boolean;
+    notes: string | null;
+}
+
+// Represents a single item in the search results list.
+export interface ProductSearchResult {
+    id: number;
+    name: string;
+    manufacturer: string | null;
+    displayPrice: string | null;
+    priceSource: 'favorite_store' | 'average' | 'none';
+    availability: {
+      isAtFavoriteStore: boolean;
+      otherStoreCount: number;
+    };
 }

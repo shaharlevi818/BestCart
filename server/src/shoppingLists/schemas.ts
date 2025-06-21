@@ -6,12 +6,14 @@ import { z } from 'zod';
 export const createListSchema = z.object({
   // Define validation rules for the 'body' part of the request
   body: z.object({
-    name: z.string({ required_error: 'VALIDATION: List name is required.' }) // Ensure name is a string
-           .min(1, { message: 'VALIDATION: List name cannot be empty.' }) // Ensure not empty
-           .max(255, { message: 'VALIDATION: List name too long (max 255 chars).' }), // Optional max length
+    name: z.string({ required_error: 'Name is required.' }) // Ensure name is a string
+           .min(1, { message: 'Name cannot be empty.' }) // Ensure not empty
+           .max(30, { message: 'Name is too long (max 30 chars).' }), // Optional max length
     description: z.string()
-                  .max(1000, { message: 'VALIDATION: Description too long (max 1000 chars).'})
-                  .optional(), // description is optional
+                  .max(1000, { message: 'Description is too long (max 1000 chars).'})
+                  // description is optional, can be null or a string, max length 1000
+                  .nullable()
+                  .optional(),
     is_template: z.boolean().optional(), // is_template is optional, must be boolean if provided
     // user_id typically comes from authentication, not the request body for creating a list for oneself
   })

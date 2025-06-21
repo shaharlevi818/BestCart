@@ -1,201 +1,190 @@
-// src/shoppingLists/router.ts
-
-import express from 'express'; // Removed unused Request, Response, Router imports for this snippet
-import shoppingListService from '../shoppingLists/service';
+import express from 'express';
+import shoppingListService from './service';
 import productService from '../products/service';
-import userService from '../users/service';
-// <<< Import the middleware and schema
+// ... other imports
 import { validateRequest } from '../middleware/validateRequest';
-import { createListSchema, getListByListIdSchema } from '../shoppingLists/schemas';
-import { ShoppingList } from './interface';
+import { createListSchema } from './schemas';
 
-const router = express.Router(); // Re-add Router if needed elsewhere
+const router = express.Router();
 
-// --- Other routes (like GET) stay the same ---
-router.get('/',
-    async (req, res) => {
-        const userId = 1;       //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! placeholder!
-        console.log(`ROUTE: GET /api/shoppingList hit for user ${userId}`);
-        try {
-            const userShoppingLists = await shoppingListService.getAllListsForUser(userId);
-            res.status(200).json(userShoppingLists);
-        } catch (error: any) {
-            console.error(`ROUTE Error fetching lists for user ${userId}:`, error.message);
-            res.status(500).json({message: `Error fetching shopping list for user: ${userId}`});
-        }
-    }
-);
-
-
-// --- getting list info ---
-// function Inouts: user_id, list_id
-router.get(
-    '/:listId',
-    //validateRequest(getListByListIdSchema),
-    async (req, res) => {
-        const userId = 1; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! placeholder
-        const listToGetData = req.body
-        const listId = listToGetData.id
-        
-        console.log(`DEBUG: Route GET :listId -> list data = ${listId}.`);
-        console.log(`ROUTE: /api/shoppinglist/:listId validated.`);
-
-        try {
-            const listData = await shoppingListService.getListByListId(userId, listId);
-            res.status(200).json({
-                message: `Wanted list fecthed successfully.`,
-                data: {
-                    "User Id": userId,
-                    "List Id": listId,
-                    "Name": listData?.name,
-                    "Description": listData?.description,
-                    "is template": listData?.is_template,
-                    "created at": listData?.created_at,
-                    "updated at": listData?.updated_at
-                }
-            });
-        } catch (error: any) {
-            console.error(`Route error fetching shopping list: ${listId}`, error.message);
-            res.status(500).json({ message: `Route error fetching list ${listId}` });
-        }
-    }
-);
-
-
-router.get(
-    '/:listId/products',
-    //Add validation
-    async (req, res) => {
-        const userId = 1; // Placeholder - replace with actual user ID from auth later
-        const listId = req.body.id;
-        console.log(`ROUTE: GET /api/shoppinglist/:listId/products validated, list Id = ${listId}.`);
-        try {
-            // 1. Optionally, verify the list itself exists
-            const list = await shoppingListService.getListByListId(userId, listId); // Assuming userId 0 or from auth
-            if (!list) {
-                return res.status(404).json({ message: `Shopping list with ID ${listId} not found.` });
-            }
-
-            // TODO: Authorization check: Does the authenticated user own this list?
-
-            // 2. Fetch combined product details for the list
-            // For now, we don't need prices, so we pass default options or an empty object
-            const productsWithDetails = await productService.getProductsDetailsForList(listId, {});
-            // Example for future use with prices for a specific store:
-            // const productsWithDetails = await productService.getProductsDetailsForList(listId, { includePrice: true, storeId: 123 });
-
-
-            res.status(200).json({
-                message: `Products for list ${listId} fetched successfully.`,
-                listId: listId,
-                listName: list.name, // From the shoppingListService.getListById call
-                count: productsWithDetails.length,
-                data: productsWithDetails,
-            });
-
-        } catch (error: any) {
-            console.error(`Error in GET /${listId}/products:`, error);
-            res.status(500).json({ message: error.message || 'Server error while retrieving products for the list.' });
-        }
-    }
-);
-
-
-
-// --- Apply validation to POST route ---
-//function returns new Id of the new list.
-router.post(
-    '/',
-    validateRequest(createListSchema), // <<< Apply validation middleware HERE
-    // This async handler only runs if validateRequest calls next()
-    async (req, res) => {
-        // If code reaches here, req.body is validated according to createListSchema.body
-        const userId = 1; // Placeholder - replace with actual user ID from auth later
-        const listData = req.body;
-        console.log(`ROUTE: POST /api/shoppinglist validated. Data: ${listData}.`);
-        
-        try {
-            const newListId = await shoppingListService.createList(listData, userId);
-            res.status(201).json({ message: `List created successfully, listId: ${newListId}` });
-        } catch (error: any) {
-            console.error(`Route Error creating shopping list:`, error.message);
-            res.status(500).json({ message: `Error creating list` });
-        }
-    }
-);
-
-export default router;
-
-
-
-
-
-
-
-
-
-/*
-
-import pool from '../config/database'; // <<< IMPORT THE POOL
-
-const router: Router = express.Router();
-
-
-// POST /lists - create new list (Example structure - needs implementation)
-router.post('/', async (req: Request, res: Response) => { // <<< Add async
-    // ** Add validation for req.body **
-    const { name, description, is_one_time, is_template, user_id } = req.body;
-    if (!name) {
-        return res.status(400).json({ message: 'List name is required' });
-    }
+// GET all of a user's lists
+router.get('/', async (req, res) => {
+    const userId = 1; // Placeholder
+    console.log(`ROUTE: GET /api/shopping-lists hit for user ${userId}`);
     try {
-        // Logic to create new list in the database
-        const sql = 'INSERT INTO shopping_lists (name, description, is_one_time, is_template, user_id) VALUES (?, ?, ?, ?, ?)';
-        const [result] = await pool.query(sql, [name, description || null, is_one_time || false, is_template || false, user_id || null]);
-        const insertId = (result as any).insertId;
-        res.status(201).json({ message: 'Create a new list', listId: insertId });
+        const userShoppingLists = await shoppingListService.getAllListsForUser(userId);
+        res.status(200).json(userShoppingLists);
     } catch (error: any) {
-        console.error("Error creating shopping list:", error.message);
-        res.status(500).json({ message: 'Error creating list' });
+        console.error(`ROUTE Error fetching lists for user ${userId}:`, error.message);
+        res.status(500).json({ message: `Error fetching shopping lists for user: ${userId}` });
     }
 });
 
-// GET /lists/count - Get the number of lists (Example structure - needs implementation)
-router.get('/count', async (req: Request, res: Response) => { // <<< Add async
+// GET a specific list by its ID
+router.get('/:listId', async (req, res) => {
+    const userId = 1; // Placeholder
+    // --- FIX: Read listId from req.params, not req.body ---
+    const listId = parseInt(req.params.listId, 10); 
+
+    if (isNaN(listId)) {
+        return res.status(400).json({ message: 'Invalid list ID.' });
+    }
+
+    console.log(`ROUTE: GET /api/shopping-lists/:listId hit for listId ${listId}.`);
+
     try {
-         // Logic to get the number of lists from the database
-        const [rows] = await pool.query('SELECT COUNT(*) as listCount FROM shopping_lists');
-        // rows[0] might look like { listCount: 5 }
-        const count = (rows as any[])[0]?.listCount || 0;
-        res.status(200).json({ listCount: count });
+        const listData = await shoppingListService.getListByListId(userId, listId);
+        if (!listData) {
+            return res.status(404).json({ message: `List with ID ${listId} not found or does not belong to user.` });
+        }
+        res.status(200).json(listData);
     } catch (error: any) {
-         console.error("Error counting shopping lists:", error.message);
-         res.status(500).json({ message: 'Error counting lists' });
+        console.error(`Route error fetching shopping list ${listId}:`, error.message);
+        res.status(500).json({ message: `Route error fetching list ${listId}` });
     }
 });
 
-// DELETE /lists/{listId} - Delete a list (Example structure - needs implementation)
-router.delete('/:listId', async (req: Request, res: Response) => { // <<< Add async
-    const listId = req.params.listId;
-    // ** Add validation for listId **
-    if (!listId || isNaN(Number(listId))) {
-         return res.status(400).json({ message: 'Invalid list ID' });
+
+// POST /api/shopping-lists/:listId/items - Adds a product to a list
+router.post('/:listId/items', async (req, res) => {
+    const userId = 1; // Placeholder for authenticated user
+    const listId = parseInt(req.params.listId, 10);
+    const { productId } = req.body; // Expect productId in the request body
+
+    if (isNaN(listId) || !productId || isNaN(productId)) {
+        return res.status(400).json({ message: 'Invalid list ID or product ID.' });
     }
+
     try {
-        // Logic to delete the list with listId from the database
-        const [result] = await pool.query('DELETE FROM shopping_lists WHERE id = ?', [listId]);
-        const affectedRows = (result as any).affectedRows;
-        if (affectedRows > 0) {
-             res.status(200).json({ message: `Deleted list ${listId}` });
-        } else {
-             res.status(404).json({ message: `List ${listId} not found` });
-        }
+        const newItem = await shoppingListService.addItemToList(listId, productId, userId);
+        res.status(201).json({ message: 'Item added successfully', data: newItem });
     } catch (error: any) {
-        console.error("Error deleting shopping list:", error.message);
-        res.status(500).json({ message: 'Error deleting list' });
+        console.error(`Route Error adding item to list ${listId}:`, error.message);
+        if (error.message.includes('permission denied')) {
+            return res.status(403).json({ message: error.message });
+        }
+        res.status(500).json({ message: 'Error adding item to list' });
+    }
+});
+
+
+// GET all products for a specific list
+router.get('/:listId/products', async (req, res) => {
+    const userId = 1; // Placeholder
+    // --- FIX: Read listId from req.params ---
+    const listId = parseInt(req.params.listId, 10);
+
+    if (isNaN(listId)) {
+        return res.status(400).json({ message: 'Invalid list ID.' });
+    }
+
+    console.log(`ROUTE: GET /api/shopping-lists/:listId/products hit for list Id = ${listId}.`);
+    try {
+        const list = await shoppingListService.getListByListId(userId, listId);
+        if (!list) {
+            return res.status(404).json({ message: `Shopping list with ID ${listId} not found.` });
+        }
+
+        const productsWithDetails = await productService.getProductsDetailsForList(listId);
+        res.status(200).json({
+            message: `Products for list ${listId} fetched successfully.`,
+            listId: listId,
+            listName: list.name,
+            count: productsWithDetails.length,
+            data: productsWithDetails,
+        });
+
+    } catch (error: any) {
+        console.error(`Error in GET /${listId}/products:`, error);
+        res.status(500).json({ message: 'Server error while retrieving products for the list.' });
+    }
+});
+
+// POST a new list
+router.post('/', validateRequest(createListSchema), async (req, res) => {
+    const userId = 1; // Placeholder
+    const listData: { name: string; description?: string; is_template?: boolean } = req.body;
+    console.log(`ROUTE: POST /api/shopping-lists validated.`);
+    
+    try {
+        const newList = await shoppingListService.createList(listData, userId);
+        res.status(201).json({ message: `List created successfully`, data: newList });
+    } catch (error: any) {
+        console.error(`Route Error creating shopping list:`, error.message);
+        res.status(500).json({ message: `Error creating list` });
+    }
+});
+
+router.delete('/:listId', async (req, res) => {
+    const userId = 1; // Placeholder
+    const listId = parseInt(req.params.listId, 10);
+    if (isNaN(listId)) {
+        return res.status(400).json({ message: 'Invalid list ID.' });
+    }
+    console.log(`ROUTE: DELETE /api/shopping-lists/:listId hit for listId ${listId}.`);
+    try {
+        const deletedCount = await shoppingListService.deleteListById(userId, listId);
+        if (deletedCount === 0) {
+            return res.status(404).json({ message: `List with ID ${listId} not found or does not belong to user.` });
+        }
+        res.status(200).json({ message: `List with ID ${listId} deleted successfully.` });
+    } catch (error: any) {
+        console.error(`Route Error deleting shopping list ${listId}:`, error.message);
+        res.status(500).json({ message: `Error deleting list ${listId}` });
+    }
+});
+// Add this PUT route to your router file
+
+router.put('/:listId', async (req, res) => {
+    const userId = 1; // Placeholder
+    const listId = parseInt(req.params.listId, 10);
+    const listData = req.body;
+
+    if (isNaN(listId)) {
+        return res.status(400).json({ message: 'Invalid list ID.' });
+    }
+    // Note: You should create a schema for updates as well!
+    // For now, we'll proceed without one for simplicity.
+
+    try {
+        const updatedList = await shoppingListService.updateList(listId, listData, userId);
+        if (!updatedList) {
+            return res.status(404).json({ message: `List with ID ${listId} not found or you do not have permission to edit it.` });
+        }
+        res.status(200).json({ message: 'List updated successfully', data: updatedList });
+    } catch (error: any) {
+        console.error(`Route Error updating list ${listId}:`, error.message);
+        res.status(500).json({ message: 'Error updating list' });
+    }
+});
+
+router.post('/:listId/products', async (req, res) => {
+    const userId = 1; // Placeholder for authenticated user
+    const listId = parseInt(req.params.listId, 10);
+    const { productId } = req.body; // Expect productId in the request body
+
+    if (isNaN(listId) || !productId || isNaN(productId)) {
+        return res.status(400).json({ message: 'Invalid list ID or product ID.' });
+    }
+
+    try {
+        const list = await shoppingListService.getListByListId(userId, listId);
+        if (!list) {
+            return res.status(404).json({ message: `Shopping list with ID ${listId} not found.` });
+        }
+
+        const productsWithDetails = await productService.getProductsDetailsForList(listId);
+        res.status(200).json({
+            message: `Products for list ${listId} fetched successfully.`,
+            listId: listId,
+            listName: list.name,
+            count: productsWithDetails.length,
+            data: productsWithDetails,
+        });
+    } catch (error: any) {
+        console.error(`Error in GET /${listId}/products:`, error);
+        res.status(500).json({ message: 'Server error while retrieving products for the list.' });
     }
 });
 
 export default router;
-
-*/

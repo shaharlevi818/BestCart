@@ -12,6 +12,8 @@ import StoresScreen from '../screens/StoresScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import NewListScreen from '../screens/NewListScreen';
 import ListDetailScreen from '../screens/ListDetailScreen';
+import EditListScreen from '../screens/EditListScreen'; // Import the new screen
+
 
 // --- TYPE DEFINITIONS ---
 
@@ -28,6 +30,7 @@ export type RootStackParamList = {
   MainTabs: undefined; // This route renders the entire Tab Navigator
   NewListModal: undefined; // The modal for creating a new list
   ListDetailScreen: { listId: number }; // The detail screen, which requires a listId
+  EditListScreen: { listId: number }; // The edit screen, which also requires a listId
 };
 
 // Create the navigator instances
@@ -42,32 +45,48 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        // Dynamically set the icon for each tab
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'alert-circle'; // Default icon
-
-          if (route.name === 'ShoppingLists') {
-            iconName = focused ? 'list-circle' : 'list-circle-outline';
-          } else if (route.name === 'BrowseProducts') {
-            iconName = focused ? 'search-circle' : 'search-circle-outline';
-          } else if (route.name === 'Stores') {
-            iconName = focused ? 'cart' : 'cart-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        // Define colors for active/inactive tabs
-        tabBarActiveTintColor: 'tomato',
-        tabBarInactiveTintColor: 'gray',
-      })}
+      screenOptions={{ headerShown: false, }}
     >
-      <Tab.Screen name="ShoppingLists" component={ShoppingListsScreen} options={{ title: 'My Lists' }} />
-      <Tab.Screen name="BrowseProducts" component={BrowseProductsScreen} options={{ title: 'Browse' }} />
-      <Tab.Screen name="Stores" component={StoresScreen} options={{ title: 'Stores' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <Tab.Screen 
+        name="ShoppingLists" 
+        component={ShoppingListsScreen} 
+        options={{ 
+          title: 'My Lists',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list-outline" size={size} color={color} />
+          ),
+        }} 
+      />
+      <Tab.Screen 
+        name="BrowseProducts" 
+        component={BrowseProductsScreen} 
+        options={{ 
+          title: 'Browse',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search-outline" size={size} color={color} />
+          ),
+        }} 
+      />
+      <Tab.Screen 
+        name="Stores" 
+        component={StoresScreen} 
+        options={{ 
+          title: 'Stores',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cart-outline" size={size} color={color} />
+          ),
+        }} 
+      />
+      <Tab.Screen 
+        name="Settings" 
+        component={SettingsScreen} 
+        options={{ 
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }} 
+      />
     </Tab.Navigator>
   );
 }
@@ -85,12 +104,17 @@ export default function AppNavigator() {
         <Stack.Screen
           name="MainTabs"
           component={MainTabs}
-          options={{ headerShown: false }} // Hide the Stack header for the screen that contains the tabs
+          options={{ title: "My Lists" }} // Hide the Stack header for the screen that contains the tabs
         />
         <Stack.Screen
           name="ListDetailScreen"
           component={ListDetailScreen}
           // The title for this screen is set dynamically inside the component itself
+        />
+        <Stack.Screen
+          name="EditListScreen"
+          component={EditListScreen}
+          options={{ title: 'Edit List' }} // Title for the edit screen
         />
       </Stack.Group>
 
@@ -99,7 +123,7 @@ export default function AppNavigator() {
         <Stack.Screen
           name="NewListModal"
           component={NewListScreen}
-          options={{ title: 'Create a New List' }}
+          options={{ title: 'Create New List' }}
         />
       </Stack.Group>
     </Stack.Navigator>
